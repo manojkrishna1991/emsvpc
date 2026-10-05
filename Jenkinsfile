@@ -27,7 +27,7 @@ pipeline {
           {
             "commands": [
               "sudo mkdir -p /opt/app",
-              "aws s3 cp s3://project-deploy-416754239002/entitlement/app.jar /opt/app/app.jar --region ap-south-1",
+              "aws s3 cp s3://project-deploy-416754239002/entitlement/app.jar /opt/app/app.jar --region us-east-1",
               "sudo systemctl restart entitlement || sudo systemctl start entitlement",
               "sleep 3",
               "sudo systemctl status entitlement --no-pager -l"
