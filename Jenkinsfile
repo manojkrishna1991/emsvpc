@@ -22,26 +22,50 @@ pipeline {
         sh '''
 cat > /tmp/deploy.py <<'PY'
 import boto3, time, os
+
 ssm = boto3.client('ssm', region_name=os.environ['AWS_REGION'])
 instance_id = os.environ['APP_INSTANCE_ID']
 bucket = os.environ['S3_BUCKET']
+secret_name = "rds/entitlement/db"
 
 cmds = [
     "if ! command -v aws >/dev/null 2>&1; then apt update && apt install -y awscli unzip curl; fi",
     "if ! command -v java >/dev/null 2>&1; then apt update && apt install -y openjdk-21-jre; fi",
-    "java -version",
-    "aws --version",
     "sudo mkdir -p /opt/app && sudo chown ubuntu:ubuntu /opt/app",
     f"aws s3 cp s3://{bucket}/entitlement/app.jar /opt/app/app.jar --region {os.environ['AWS_REGION']}",
-    "ls -lh /opt/app/app.jar",
     "sudo chown ubuntu:ubuntu /opt/app/app.jar",
-    "printf '[Unit]\\nDescription=Entitlement\\nAfter=network.target\\n[Service]\\nUser=ubuntu\\nWorkingDirectory=/opt/app\\nExecStart=/usr/bin/java -jar /opt/app/app.jar --server.port=8080\\nRestart=always\\nEnvironment=JAVA_OPTS=-Xms256m -Xmx512m\\n[Install]\\nWantedBy=multi-user.target\\n' | sudo tee /etc/systemd/system/entitlement.service",
+    f"""sudo tee /usr/local/bin/run-entitlement.sh > /dev/null <<'EOS'
+#!/bin/bash
+set -e
+SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id {secret_name} --region us-east-1 --query SecretString --output text)
+export DB_USER=$(echo "$SECRET_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin)['username'])")
+export DB_PASS=$(echo "$SECRET_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin)['password'])")
+DB_HOST_VAL=$(echo "$SECRET_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin).get('host',''))")
+if [ -n "$DB_HOST_VAL" ]; then export DB_HOST="$DB_HOST_VAL"; fi
+exec /usr/bin/java -jar /opt/app/app.jar --server.port=8080
+EOS
+sudo chmod +x /usr/local/bin/run-entitlement.sh""",
+    """sudo tee /etc/systemd/system/entitlement.service > /dev/null <<'EOF'
+[Unit]
+Description=Entitlement
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/opt/app
+ExecStart=/usr/local/bin/run-entitlement.sh
+Restart=always
+Environment=JAVA_OPTS=-Xms256m -Xmx512m
+
+[Install]
+WantedBy=multi-user.target
+EOF""",
     "sudo systemctl daemon-reload",
     "sudo systemctl enable entitlement",
     "sudo systemctl restart entitlement",
     "sleep 10",
     "sudo systemctl status entitlement --no-pager -l || true",
-    "curl -s http://localhost:8080/api/v1/health || echo 'HEALTH FAILED - checking logs:' && sudo journalctl -u entitlement -n 30 --no-pager || true"
+    "curl -s http://localhost:8080/api/v1/health || (echo 'HEALTH FAILED - checking logs:'; sudo journalctl -u entitlement -n 30 --no-pager); true"
 ]
 
 resp = ssm.send_command(
