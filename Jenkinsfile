@@ -26,7 +26,7 @@ import boto3, time, os
 ssm = boto3.client('ssm', region_name=os.environ['AWS_REGION'])
 instance_id = os.environ['APP_INSTANCE_ID']
 bucket = os.environ['S3_BUCKET']
-secret_name = "rds/entitlement/db"
+secret_name = "arn:aws:secretsmanager:us-east-1:416754239002:secret:rds!db-1be2ffeb-f5c1-489f-b0ef-f367b57963fe-LUCY1I"
 
 cmds = [
     "if ! command -v aws >/dev/null 2>&1; then apt update && apt install -y awscli unzip curl; fi",
