@@ -23,12 +23,23 @@ pipeline {
     stage('Deploy to Private EC2 via SSM') {
       steps {
         sh '''
+          cat > /tmp/ssm-params.json <<'JSON'
+          {
+            "commands": [
+              "sudo mkdir -p /opt/app",
+              "aws s3 cp s3://project-deploy-416754239002/entitlement/app.jar /opt/app/app.jar --region ap-south-1",
+              "sudo systemctl restart entitlement || sudo systemctl start entitlement",
+              "sleep 3",
+              "sudo systemctl status entitlement --no-pager -l"
+            ]
+          }
+          JSON
+
           aws ssm send-command \
-            --targets "Key=tag:Name,Values=project-app-server" \
-            --document-name "AWS-RunShellScript" \
-            --parameters '{"commands":["sudo mkdir -p /opt/app","aws s3 cp s3://project-deploy-416754239002/entitlement/app.jar /opt/app/app.jar --region ap-south-1","sudo systemctl restart entitlement || sudo systemctl start entitlement","sleep 3","sudo systemctl status entitlement --no-pager -l"]}' \
-            --region ap-south-1 \
-            --output text
+            --targets Key=tag:Name,Values=project-app-server \
+            --document-name AWS-RunShellScript \
+            --parameters file:///tmp/ssm-params.json \
+            --region ap-south-1
         '''
       }
     }
