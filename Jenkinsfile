@@ -17,7 +17,7 @@ pipeline {
     }
     stage('Upload to S3') {
       steps {
-        sh 'aws s3 cp build/libs/*.jar s3://$S3_BUCKET/entitlement/app.jar --region $AWS_REGION'
+        sh 'aws s3 cp build/libs/ems-service-0.0.1-SNAPSHOT.jar s3://$S3_BUCKET/entitlement/app.jar --region $AWS_REGION'
       }
     }
     stage('Deploy to Private EC2 via SSM') {
