@@ -24,16 +24,10 @@ pipeline {
       steps {
         sh '''
           aws ssm send-command \
-            --targets "Key=tag:Name,Values=$APP_TAG" \
+            --targets "Key=tag:Name,Values=project-app-server" \
             --document-name "AWS-RunShellScript" \
-            --parameters 'commands=[
-              "sudo mkdir -p /opt/app",
-              "aws s3 cp s3://'"$S3_BUCKET"'/entitlement/app.jar /opt/app/app.jar --region '"$AWS_REGION"'",
-              "sudo systemctl restart entitlement || sudo systemctl start entitlement",
-              "sleep 3",
-              "sudo systemctl status entitlement --no-pager -l"
-            ]' \
-            --region $AWS_REGION \
+            --parameters '{"commands":["sudo mkdir -p /opt/app","aws s3 cp s3://project-deploy-416754239002/entitlement/app.jar /opt/app/app.jar --region ap-south-1","sudo systemctl restart entitlement || sudo systemctl start entitlement","sleep 3","sudo systemctl status entitlement --no-pager -l"]}' \
+            --region ap-south-1 \
             --output text
         '''
       }
