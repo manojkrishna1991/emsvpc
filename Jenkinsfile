@@ -27,8 +27,8 @@ instance_id = os.environ['APP_INSTANCE_ID']
 bucket = os.environ['S3_BUCKET']
 
 cmds = [
-    "if! command -v aws >/dev/null 2>&1; then apt update && apt install -y awscli unzip curl; fi",
-    "if! command -v java >/dev/null 2>&1; then apt update && apt install -y openjdk-21-jre; fi",
+    "if ! command -v aws >/dev/null 2>&1; then apt update && apt install -y awscli unzip curl; fi",
+    "if ! command -v java >/dev/null 2>&1; then apt update && apt install -y openjdk-21-jre; fi",
     "java -version",
     "aws --version",
     "sudo mkdir -p /opt/app && sudo chown ubuntu:ubuntu /opt/app",
