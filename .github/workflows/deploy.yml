@@ -1,0 +1,46 @@
+name: Build & Deploy Entitlement
+on:
+  push:
+    branches: [main]
+env:
+  AWS_REGION: us-east-1
+  ECR_REPO: 416754239002.dkr.ecr.us-east-1.amazonaws.com/entitlement
+  ECS_CLUSTER: entitlement-cluster
+  ECS_SERVICE: entitlement
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Tests
+        run: ./gradlew test --no-daemon
+
+      - name: Configure AWS via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::416754239002:role/GitHubActionsDeployRole
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        run: |
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${{ env.ECR_REPO }}
+
+      - name: Build, Tag, Push
+        run: |
+          docker build -t $ECR_REPO:${{ github.sha }} -t $ECR_REPO:latest .
+          docker push $ECR_REPO:${{ github.sha }}
+          docker push $ECR_REPO:latest
+
+      - name: Deploy to ECS
+        run: |
+          aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --force-new-deployment --region $AWS_REGION

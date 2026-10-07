@@ -1,0 +1,30 @@
+{
+  "family": "entitlement",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::416754239002:role/ecsTaskExecutionRole",
+  "containerDefinitions": [{
+    "name": "entitlement",
+    "image": "416754239002.dkr.ecr.us-east-1.amazonaws.com/entitlement:latest",
+    "portMappings": [{"containerPort": 8080}],
+    "essential": true,
+    "secrets": [
+      {"name": "DB_USER", "valueFrom": "arn:aws:secretsmanager:us-east-1:416754239002:secret:rds/entitlement/db:username::"},
+      {"name": "DB_PASS", "valueFrom": "arn:aws:secretsmanager:us-east-1:416754239002:secret:rds/entitlement/db:password::"},
+      {"name": "DB_URL", "valueFrom": "arn:aws:secretsmanager:us-east-1:416754239002:secret:rds/entitlement/db:host::"}
+    ],
+    "environment": [
+      {"name": "SPRING_PROFILES_ACTIVE", "value": "prod"}
+    ],
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group": "/ecs/entitlement",
+        "awslogs-region": "us-east-1",
+        "awslogs-stream-prefix": "ecs"
+      }
+    }
+  }]
+}

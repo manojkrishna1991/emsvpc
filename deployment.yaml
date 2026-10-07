@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: entitlement, labels: {app: entitlement}}
+spec:
+  replicas: 3
+  strategy: {type: RollingUpdate, rollingUpdate: {maxUnavailable: 1, maxSurge: 1}}
+  selector: {matchLabels: {app: entitlement}}
+  template:
+    metadata: {labels: {app: entitlement}}
+    spec:
+      containers:
+      - name: entitlement
+        image: 416754239002.dkr.ecr.us-east-1.amazonaws.com/entitlement:latest
+        ports: [{containerPort: 8080}]
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: prod
+        envFrom:
+        - secretRef: {name: entitlement-secrets}
+        resources: {requests: {cpu: "500m", memory: "1Gi"}, limits: {cpu: "1000m", memory: "2Gi"}}
+        readinessProbe: {httpGet: {path: /actuator/health, port: 8080}, initialDelaySeconds: 30}
+        livenessProbe: {httpGet: {path: /actuator/health, port: 8080}, initialDelaySeconds: 60}
+        securityContext: {readOnlyRootFilesystem: true, runAsNonRoot: true}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: entitlement}
+spec: {selector: {app: entitlement}, ports: [{port: 80, targetPort: 8080}]}
